@@ -1,0 +1,120 @@
+﻿@page "/discos"
+@using escuchify_app.Components.Models
+@rendermode InteractiveServer
+@inject HttpClient HttpClient
+@inject NavigationManager NavigationManager
+@inject IJSRuntime JSRuntime
+
+<PageTitle>Discos</PageTitle>
+    
+<h1>Discos</h1>
+
+<div class="mb-3">
+    <a class="btn btn-primary" href="/discos/nuevo">Crear Nuevo Disco</a>
+</div>
+
+@if (!string.IsNullOrEmpty(mensajeError))
+{
+    <div class="alert alert-danger">
+        @mensajeError
+    </div>
+}
+
+@if (discos == null)
+{
+    <p><em>Cargando discos...</em></p>
+}
+else if (discos.Length == 0)
+{
+    <p><em>No hay discos cargados en el sistema.</em></p>
+}
+else
+{
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>Id</th>
+                <th>Titulo</th>
+                <th>Año</th>
+                <th>Tipo</th>
+                <th>Acciones</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (Disco disco in discos)
+            {
+                <tr>
+                    <td>@disco.Id</td>
+                    <td>@disco.Titulo</td>
+                    <td>@disco.AnioLanzamiento</td>
+                    <td>@disco.TipoDisco</td>
+                    <td>
+                        <button class="btn btn-info btn-sm" @onclick="() => VerDisco(disco.Id)">
+                            Ver 
+                        </button>
+                        <button class="btn btn-warning btn-sm" @onclick="() => EditarDisco(disco.Id)">
+                            Editar 
+                        </button>
+                        <button class="btn btn-danger btn-sm" @onclick="() => EliminarDisco(disco.Id)">
+                            Eliminar
+                        </button>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private Disco[]? discos;
+    private string? mensajeError;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadDiscos();
+    }
+
+    private async Task LoadDiscos()
+    {
+        try
+        {
+            // Usamos la ruta relativa, el BaseAddress del Program.cs hace el resto
+            discos = await HttpClient.GetFromJsonAsync<Disco[]>("api/Discos");
+            mensajeError = null;
+        }
+        catch (Exception ex)
+        {
+            mensajeError = $"Error al cargar discos: {ex.Message}. Asegúrate que la API esté corriendo.";
+        }
+    }
+
+    private void NuevoDisco() => NavigationManager.NavigateTo("/discos/nuevo");
+    
+    private void VerDisco(int id) => NavigationManager.NavigateTo($"/discos/{id}");
+
+    private void EditarDisco(int id) => NavigationManager.NavigateTo($"/discos/editar/{id}");
+
+    private async Task EliminarDisco(int id)
+    {
+        bool confirmado = await JSRuntime.InvokeAsync<bool>("confirm", "¿Seguro que deseas eliminar este disco?");
+        if (confirmado)
+        {
+            try 
+            {
+                var response = await HttpClient.DeleteAsync($"api/Discos/{id}");
+                if(response.IsSuccessStatusCode)
+                {
+                    await LoadDiscos();
+                }
+                else
+                {
+                    mensajeError = "No se pudo eliminar el disco.";
+                }
+            }
+            catch(Exception ex)
+            {
+                mensajeError = ex.Message;
+            }
+        }
+    }
+}

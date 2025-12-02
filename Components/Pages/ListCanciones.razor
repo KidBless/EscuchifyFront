@@ -1,0 +1,106 @@
+@page "/canciones"
+@using escuchify_app.Components.Models
+@rendermode InteractiveServer
+@inject HttpClient HttpClient
+@inject NavigationManager NavigationManager
+@inject IJSRuntime JSRuntime
+
+<PageTitle>Canciones</PageTitle>
+
+<h1>Canciones</h1>
+
+<div class="mb-3">
+    <a class="btn btn-primary" href="/canciones/nueva">Cargar Nueva Canción</a>
+</div>
+
+@if (mensajeError != null)
+{
+    <div class="alert alert-danger">@mensajeError</div>
+}
+
+@if (canciones == null)
+{
+    <p><em>Cargando canciones...</em></p>
+}
+else if (canciones.Length == 0)
+{
+    <p><em>No hay canciones registradas.</em></p>
+}
+else
+{
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>Id</th>
+                <th>Título</th>
+                <th>Duración</th>
+                <th>Género</th>
+                <th>Acciones</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var cancion in canciones)
+            {
+                <tr>
+                    <td>@cancion.Id</td>
+                    <td>@cancion.Titulo</td>
+                    <td>@cancion.Duracion</td>
+                    <td>@cancion.Genero</td>
+                    <td>
+                        <button class="btn btn-warning btn-sm" @onclick="() => Editar(cancion.Id)">
+                            Editar
+                        </button>
+                        <button class="btn btn-danger btn-sm" @onclick="() => Eliminar(cancion.Id)">
+                            Eliminar
+                        </button>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private Cancion[]? canciones;
+    private string? mensajeError;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CargarCanciones();
+    }
+
+    private async Task CargarCanciones()
+    {
+        try
+        {
+            canciones = await HttpClient.GetFromJsonAsync<Cancion[]>("api/Canciones");
+            mensajeError = null;
+        }
+        catch (Exception ex)
+        {
+            mensajeError = $"Error al cargar: {ex.Message}";
+        }
+    }
+
+    private void Editar(int id)
+    {
+        NavigationManager.NavigateTo($"/canciones/editar/{id}");
+    }
+
+    private async Task Eliminar(int id)
+    {
+        bool confirmado = await JSRuntime.InvokeAsync<bool>("confirm", "¿Seguro que deseas eliminar esta canción?");
+        if (confirmado)
+        {
+            var response = await HttpClient.DeleteAsync($"api/Canciones/{id}");
+            if (response.IsSuccessStatusCode)
+            {
+                await CargarCanciones();
+            }
+            else
+            {
+                mensajeError = "No se pudo eliminar la canción.";
+            }
+        }
+    }
+}

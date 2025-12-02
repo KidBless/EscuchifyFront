@@ -1,0 +1,129 @@
+﻿@page "/discos/nuevo"
+@page "/discos/editar/{Id:int}"
+@using escuchify_app.Components.Models
+@inject HttpClient HttpClient
+@inject NavigationManager NavigationManager
+@rendermode InteractiveServer
+
+<PageTitle>@(Id == 0 ? "Nuevo Disco" : "Editar Disco")</PageTitle>
+    
+<h1>@(Id == 0 ? "Crear Nuevo Disco" : "Editar Disco")</h1>
+
+@if (cargando)
+{
+    <p><em>Cargando datos...</em></p>
+}
+else if (listaArtistas == null || listaArtistas.Length == 0)
+{
+    <div class="alert alert-warning">
+        No hay artistas cargados. Primero debes crear un Artista antes de crear un Disco.
+    </div>
+}
+else
+{
+     <EditForm Model="disco" OnValidSubmit="GuardarDisco" FormName="discoForm">
+        <DataAnnotationsValidator />
+        <ValidationSummary />
+
+        <div class="mb-3">
+            <label for="titulo" class="form-label">Titulo</label>
+            <InputText id="titulo" class="form-control" @bind-Value="disco.Titulo" />
+        </div>
+
+        <div class="mb-3">
+            <label for="anioLanzamiento" class="form-label">Año de Lanzamiento</label>
+            <InputNumber id="anioLanzamiento" class="form-control" @bind-Value="disco.AnioLanzamiento" />
+        </div>
+
+        <div class="mb-3">
+            <label for="tipoDisco" class="form-label">Tipo de Disco</label>
+            <InputText id="tipoDisco" class="form-control" @bind-Value="disco.TipoDisco" />
+        </div>
+
+        <div class="mb-3">
+            <label for="artista" class="form-label">Artista</label>
+            <InputSelect id="artista" class="form-select" @bind-Value="disco.ArtistaId">
+                <option value="0">-- Seleccione un Artista --</option>
+                @foreach (var artista in listaArtistas)
+                {
+                    <option value="@artista.Id">@artista.NombreArtistico</option>
+                }
+            </InputSelect>
+        </div>
+
+        <div class="mb-3">
+            <button type="submit" class="btn btn-primary">Guardar</button>
+            <button type="button" class="btn btn-secondary" @onclick="Cancelar">Cancelar</button>
+        </div>
+        
+    </EditForm> 
+}
+
+@code {
+    [Parameter]
+    public int Id { get; set; }
+
+    [SupplyParameterFromForm]
+    private Disco disco { get; set; } = new Disco();
+
+    // Lista para llenar el dropdown
+    private Artista[]? listaArtistas;
+    private bool cargando = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try 
+        {
+            // 1. Cargar la lista de artistas para el selector
+            listaArtistas = await HttpClient.GetFromJsonAsync<Artista[]>("api/Artistas");
+
+            // 2. Si estamos editando, cargar el disco
+            if (Id > 0)
+            {
+                disco = await HttpClient.GetFromJsonAsync<Disco>($"api/Discos/{Id}") ?? new Disco();
+            }
+        }
+        catch(Exception)
+        {
+            // Manejar error de carga si es necesario
+        }
+        finally
+        {
+            cargando = false;
+        }
+    }
+
+    private async Task GuardarDisco()
+    {
+        HttpResponseMessage response;
+        
+        // La validación de ArtistaId > 0 la hace automáticamente el DataAnnotationsValidator
+        // gracias al atributo [Range(1, ...)] en el modelo.
+
+        if (Id == 0)
+        {
+            // Crear (POST a api/Discos)
+            response = await HttpClient.PostAsJsonAsync("api/Discos", disco);
+        }
+        else
+        {
+            // Actualizar (PUT a api/Discos/{Id})
+            response = await HttpClient.PutAsJsonAsync($"api/Discos/{Id}", disco);
+        }
+
+        if (response.IsSuccessStatusCode)
+        {
+            NavigationManager.NavigateTo("/discos");
+        }
+        else 
+        {
+            // Opcional: Leer el error del backend si falla
+            // var error = await response.Content.ReadAsStringAsync();
+        }
+    }
+
+    private void Cancelar()
+    {
+        NavigationManager.NavigateTo("/discos");
+    }
+}

@@ -1,0 +1,107 @@
+@page "/artistas"
+@using escuchify_app.Components.Models
+@rendermode InteractiveServer
+@inject HttpClient HttpClient
+@inject NavigationManager NavigationManager
+@inject IJSRuntime JSRuntime
+
+<PageTitle>Artistas</PageTitle>
+
+<h1>Artistas</h1>
+
+<div class="mb-3">
+    <a class="btn btn-primary" href="/artistas/nuevo">Crear Nuevo Artista</a>
+</div>
+
+@if (mensajeError != null)
+{
+    <div class="alert alert-danger">@mensajeError</div>
+}
+
+@if (artistas == null)
+{
+    <p><em>Cargando...</em></p>
+}
+else if (artistas.Length == 0)
+{
+    <p><em>No hay artistas registrados.</em></p>
+}
+else
+{
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>Id</th>
+                <th>Nombre Artístico</th>
+                <th>Nacionalidad</th> <th>Año Inicio</th>
+                <th>Acciones</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var artista in artistas)
+            {
+                <tr>
+                    <td>@artista.Id</td>
+                    <td>@artista.NombreArtistico</td>
+                    <td>@artista.Nacionalidad</td>
+                    <td>@artista.AnioInicio</td>
+                    <td>
+                        <button class="btn btn-warning btn-sm" @onclick="() => Editar(artista.Id)">
+                            Editar
+                        </button>
+                        <button class="btn btn-danger btn-sm" @onclick="() => Eliminar(artista.Id)">
+                            Eliminar
+                        </button>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private Artista[]? artistas;
+    private string? mensajeError;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CargarArtistas();
+    }
+
+    private async Task CargarArtistas()
+    {
+        try
+        {
+            artistas = await HttpClient.GetFromJsonAsync<Artista[]>("api/Artistas");
+            mensajeError = null;
+        }
+        catch (Exception ex)
+        {
+            mensajeError = $"Error al cargar: {ex.Message}";
+        }
+    }
+
+    private void Editar(int id)
+    {
+        NavigationManager.NavigateTo($"/artistas/editar/{id}");
+    }
+
+    private async Task Eliminar(int id)
+    {
+        bool confirmado = await JSRuntime.InvokeAsync<bool>("confirm", 
+            "¿Seguro que deseas eliminar este artista? Esto podría fallar si tiene discos asociados.");
+        
+        if (confirmado)
+        {
+            var response = await HttpClient.DeleteAsync($"api/Artistas/{id}");
+            if (response.IsSuccessStatusCode)
+            {
+                await CargarArtistas(); // Recargar lista
+            }
+            else
+            {
+                mensajeError = "No se pudo eliminar el artista. Verifique que no tenga discos asociados.";
+            }
+        }
+    }
+}

@@ -1,0 +1,100 @@
+@page "/artistas/nuevo"
+@page "/artistas/editar/{Id:int}"
+@using escuchify_app.Components.Models
+@inject HttpClient HttpClient
+@inject NavigationManager NavigationManager
+@rendermode InteractiveServer
+
+<PageTitle>@(Id == 0 ? "Nuevo Artista" : "Editar Artista")</PageTitle>
+
+<h1>@(Id == 0 ? "Crear Nuevo Artista" : "Editar Artista")</h1>
+
+@if (artista == null)
+{
+    <p><em>Cargando...</em></p>
+}
+else
+{
+    <EditForm Model="artista" OnValidSubmit="GuardarArtista">
+        <DataAnnotationsValidator />
+        <ValidationSummary />
+
+        <div class="mb-3">
+            <label class="form-label">Nombre Artístico</label>
+            <InputText class="form-control" @bind-Value="artista.NombreArtistico" />
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label">Nombre Completo</label>
+            <InputText class="form-control" @bind-Value="artista.NombreCompleto" />
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label">Año de Inicio</label>
+            <InputNumber class="form-control" @bind-Value="artista.AnioInicio" />
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label">Nacionalidad</label>
+            <InputText class="form-control" @bind-Value="artista.Nacionalidad" />
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label">Discográfica</label>
+            <InputText class="form-control" @bind-Value="artista.Discografica" />
+        </div>
+
+        <div class="mb-3">
+            <button type="submit" class="btn btn-primary">Guardar</button>
+            <button type="button" class="btn btn-secondary" @onclick="Cancelar">Cancelar</button>
+        </div>
+    </EditForm>
+}
+
+@code {
+    [Parameter] public int Id { get; set; }
+    
+    [SupplyParameterFromForm]
+    private Artista? artista { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (Id == 0)
+        {
+            artista = new Artista(); // Nuevo
+        }
+        else
+        {
+            // Editar: Cargamos los datos desde la API
+            try 
+            {
+                artista = await HttpClient.GetFromJsonAsync<Artista>($"api/Artistas/{Id}");
+            }
+            catch(Exception)
+            {
+                // Si falla al cargar, volvemos a la lista
+                NavigationManager.NavigateTo("/artistas");
+            }
+        }
+    }
+
+    private async Task GuardarArtista()
+    {
+        HttpResponseMessage response;
+        if (Id == 0)
+        {
+            response = await HttpClient.PostAsJsonAsync("api/Artistas", artista);
+        }
+        else
+        {
+            response = await HttpClient.PutAsJsonAsync($"api/Artistas/{Id}", artista);
+        }
+
+        if (response.IsSuccessStatusCode)
+        {
+            NavigationManager.NavigateTo("/artistas");
+        }
+    }
+
+    private void Cancelar() => NavigationManager.NavigateTo("/artistas");
+}
