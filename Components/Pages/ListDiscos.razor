@@ -6,34 +6,33 @@
 @inject IJSRuntime JSRuntime
 
 <PageTitle>Discos</PageTitle>
-    
+
 <h1>Discos</h1>
 
 <div class="mb-3">
-    <a class="btn btn-primary" href="/discos/nuevo">Crear Nuevo Disco</a>
+    <a class="btn btn-primary" href="/discos/nuevo">
+        <span class="bi bi-plus-lg me-1"></span> Crear Nuevo Disco
+    </a>
 </div>
 
-@if (!string.IsNullOrEmpty(mensajeError))
-{
-    <div class="alert alert-danger">
-        @mensajeError
-    </div>
-}
+@if (!string.IsNullOrEmpty(mensajeError)) { <div class="alert alert-danger">@mensajeError</div> }
 
 @if (discos == null)
 {
-    <p><em>Cargando discos...</em></p>
+    <div class="d-flex justify-content-center my-5">
+        <div class="spinner-border text-primary" role="status"></div>
+    </div>
 }
 else if (discos.Length == 0)
 {
-    <p><em>No hay discos cargados en el sistema.</em></p>
+    <p><em>No hay discos cargados.</em></p>
 }
 else
 {
-    <table class="table table-striped">
+    <table class="table table-striped align-middle">
         <thead>
             <tr>
-                <th>Id</th>
+                <th>Portada</th>
                 <th>Titulo</th>
                 <th>Año</th>
                 <th>Tipo</th>
@@ -44,20 +43,22 @@ else
             @foreach (Disco disco in discos)
             {
                 <tr>
-                    <td>@disco.Id</td>
-                    <td>@disco.Titulo</td>
+                    <td style="width: 80px;">
+                        @if (!string.IsNullOrEmpty(disco.ImagenUrl))
+                        {
+                            <img src="@disco.ImagenUrl" alt="@disco.Titulo" class="rounded shadow-sm" style="width: 50px; height: 50px; object-fit: cover; border: 1px solid var(--purple-light);" />
+                        }
+                        else
+                        {
+                            <div class="rounded d-flex align-items-center justify-content-center bg-light text-secondary shadow-sm" style="width: 50px; height: 50px; border: 1px solid var(--purple-light);"><span class="bi bi-disc fs-4"></span></div>
+                        }
+                    </td>
+                    <td class="fw-bold" style="color: var(--purple-dark);">@disco.Titulo</td>
                     <td>@disco.AnioLanzamiento</td>
-                    <td>@disco.TipoDisco</td>
+                    <td><span class="badge bg-light text-dark border">@disco.TipoDisco</span></td>
                     <td>
-                        <button class="btn btn-info btn-sm" @onclick="() => VerDisco(disco.Id)">
-                            Ver 
-                        </button>
-                        <button class="btn btn-warning btn-sm" @onclick="() => EditarDisco(disco.Id)">
-                            Editar 
-                        </button>
-                        <button class="btn btn-danger btn-sm" @onclick="() => EliminarDisco(disco.Id)">
-                            Eliminar
-                        </button>
+                        <button class="btn btn-custom-edit btn-sm me-1" @onclick="() => EditarDisco(disco.Id)" title="Editar"><span class="bi bi-pencil-square"></span></button>
+                        <button class="btn btn-custom-delete btn-sm" @onclick="() => EliminarDisco(disco.Id)" title="Eliminar"><span class="bi bi-trash-fill"></span></button>
                     </td>
                 </tr>
             }
@@ -78,43 +79,20 @@ else
     {
         try
         {
-            // Usamos la ruta relativa, el BaseAddress del Program.cs hace el resto
             discos = await HttpClient.GetFromJsonAsync<Disco[]>("api/Discos");
             mensajeError = null;
         }
-        catch (Exception ex)
-        {
-            mensajeError = $"Error al cargar discos: {ex.Message}. Asegúrate que la API esté corriendo.";
-        }
+        catch (Exception ex) { mensajeError = $"Error al cargar: {ex.Message}"; }
     }
-
-    private void NuevoDisco() => NavigationManager.NavigateTo("/discos/nuevo");
-    
-    private void VerDisco(int id) => NavigationManager.NavigateTo($"/discos/{id}");
 
     private void EditarDisco(int id) => NavigationManager.NavigateTo($"/discos/editar/{id}");
 
     private async Task EliminarDisco(int id)
     {
-        bool confirmado = await JSRuntime.InvokeAsync<bool>("confirm", "¿Seguro que deseas eliminar este disco?");
-        if (confirmado)
+        if (await JSRuntime.InvokeAsync<bool>("confirm", "¿Eliminar este disco?"))
         {
-            try 
-            {
-                var response = await HttpClient.DeleteAsync($"api/Discos/{id}");
-                if(response.IsSuccessStatusCode)
-                {
-                    await LoadDiscos();
-                }
-                else
-                {
-                    mensajeError = "No se pudo eliminar el disco.";
-                }
-            }
-            catch(Exception ex)
-            {
-                mensajeError = ex.Message;
-            }
+            await HttpClient.DeleteAsync($"api/Discos/{id}");
+            await LoadDiscos();
         }
     }
 }

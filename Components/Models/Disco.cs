@@ -16,9 +16,9 @@ public class Disco
     [Required(ErrorMessage = "El tipo de disco es obligatorio")]
     public string TipoDisco { get; set; } = string.Empty;
 
-    // --- NUEVO: Relación con Artista ---
     [Required(ErrorMessage = "Debes seleccionar un artista")]
     [Range(1, int.MaxValue, ErrorMessage = "Selecciona un artista válido")]
     public int ArtistaId { get; set; }
-    // ----------------------------------
+
+    public string? ImagenUrl { get; set; } // <--- La propiedad que faltaba
 }

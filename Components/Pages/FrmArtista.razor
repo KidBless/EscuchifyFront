@@ -1,6 +1,7 @@
 @page "/artistas/nuevo"
 @page "/artistas/editar/{Id:int}"
 @using escuchify_app.Components.Models
+@using System.Text.Json
 @inject HttpClient HttpClient
 @inject NavigationManager NavigationManager
 @rendermode InteractiveServer
@@ -19,32 +20,71 @@ else
         <DataAnnotationsValidator />
         <ValidationSummary />
 
-        <div class="mb-3">
-            <label class="form-label">Nombre Artístico</label>
-            <InputText class="form-control" @bind-Value="artista.NombreArtistico" />
+        <div class="row">
+            <div class="col-md-8">
+                
+                <div class="mb-3">
+                    <label class="form-label">Nombre Artístico</label>
+                    <div class="input-group">
+                        <InputText class="form-control" @bind-Value="artista.NombreArtistico" placeholder="Ej: Adele" />
+                        <button type="button" class="btn btn-info" @onclick="BuscarFotoAuto">
+                            <span class="bi bi-search"></span> Buscar Foto
+                        </button>
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Nombre Completo</label>
+                    <InputText class="form-control" @bind-Value="artista.NombreCompleto" />
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Año de Inicio</label>
+                        <InputNumber class="form-control" @bind-Value="artista.AnioInicio" />
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Nacionalidad</label>
+                        <InputText class="form-control" @bind-Value="artista.Nacionalidad" />
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Discográfica</label>
+                    <InputText class="form-control" @bind-Value="artista.Discografica" />
+                </div>
+                
+                <div class="mb-3">
+                    <label class="form-label text-muted small">URL de Imagen (Automática)</label>
+                    <InputText class="form-control form-control-sm" @bind-Value="artista.ImagenUrl" />
+                </div>
+
+            </div>
+
+            <div class="col-md-4 d-flex align-items-center justify-content-center">
+                <div class="card shadow-sm p-2" style="width: 100%; max-width: 300px;">
+                    <div class="card-body text-center">
+                        <h6 class="card-subtitle mb-2 text-muted">Vista Previa</h6>
+                        
+                        @if (!string.IsNullOrEmpty(artista.ImagenUrl))
+                        {
+                            <img src="@artista.ImagenUrl" class="img-fluid rounded" 
+                                 style="max-height: 250px; object-fit: cover;" 
+                                 alt="Vista previa" />
+                        }
+                        else
+                        {
+                            <div class="bg-light d-flex align-items-center justify-content-center rounded" 
+                                 style="height: 200px; border: 2px dashed #ccc;">
+                                <span class="text-muted">Sin Imagen</span>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
         </div>
 
-        <div class="mb-3">
-            <label class="form-label">Nombre Completo</label>
-            <InputText class="form-control" @bind-Value="artista.NombreCompleto" />
-        </div>
-
-        <div class="mb-3">
-            <label class="form-label">Año de Inicio</label>
-            <InputNumber class="form-control" @bind-Value="artista.AnioInicio" />
-        </div>
-
-        <div class="mb-3">
-            <label class="form-label">Nacionalidad</label>
-            <InputText class="form-control" @bind-Value="artista.Nacionalidad" />
-        </div>
-
-        <div class="mb-3">
-            <label class="form-label">Discográfica</label>
-            <InputText class="form-control" @bind-Value="artista.Discografica" />
-        </div>
-
-        <div class="mb-3">
+        <div class="mt-4">
             <button type="submit" class="btn btn-primary">Guardar</button>
             <button type="button" class="btn btn-secondary" @onclick="Cancelar">Cancelar</button>
         </div>
@@ -57,24 +97,52 @@ else
     [SupplyParameterFromForm]
     private Artista? artista { get; set; }
 
+    // Clase auxiliar para leer la respuesta JSON del endpoint nuevo
+    private class ImagenResponse { public string Url { get; set; } = ""; }
+
     protected override async Task OnInitializedAsync()
     {
         if (Id == 0)
         {
-            artista = new Artista(); // Nuevo
+            artista = new Artista(); 
         }
         else
         {
-            // Editar: Cargamos los datos desde la API
             try 
             {
                 artista = await HttpClient.GetFromJsonAsync<Artista>($"api/Artistas/{Id}");
             }
-            catch(Exception)
+            catch
             {
-                // Si falla al cargar, volvemos a la lista
                 NavigationManager.NavigateTo("/artistas");
             }
+        }
+    }
+
+    // 👇 MÉTODO NUEVO: Llama al endpoint de búsqueda sin guardar
+    private async Task BuscarFotoAuto()
+    {
+        if (artista == null || string.IsNullOrWhiteSpace(artista.NombreArtistico)) return;
+
+        try
+        {
+            // Llamamos al endpoint nuevo que creamos en el backend
+            var response = await HttpClient.GetAsync($"api/Artistas/buscar-imagen?nombre={artista.NombreArtistico}");
+            
+            if (response.IsSuccessStatusCode)
+            {
+                var resultado = await response.Content.ReadFromJsonAsync<ImagenResponse>();
+                if (resultado != null)
+                {
+                    artista.ImagenUrl = resultado.Url;
+                    // Forzamos actualización de la interfaz
+                    StateHasChanged();
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error buscando imagen: {ex.Message}");
         }
     }
 

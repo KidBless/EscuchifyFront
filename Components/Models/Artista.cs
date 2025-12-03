@@ -21,4 +21,6 @@ public class Artista
 
     [Required(ErrorMessage = "La discográfica es obligatoria")]
     public string Discografica { get; set; } = string.Empty;
+
+    public string? ImagenUrl { get; set; }
 }

@@ -11,119 +11,139 @@
 
 @if (cargando)
 {
-    <p><em>Cargando datos...</em></p>
+    <div class="d-flex align-items-center my-4">
+        <div class="spinner-border text-primary me-2" role="status"></div>
+        <span>Cargando...</span>
+    </div>
 }
 else if (listaArtistas == null || listaArtistas.Length == 0)
 {
     <div class="alert alert-warning">
-        No hay artistas cargados. Primero debes crear un Artista antes de crear un Disco.
+        No hay artistas. <a href="/artistas/nuevo">Crear uno aquí.</a>
     </div>
 }
 else
 {
-     <EditForm Model="disco" OnValidSubmit="GuardarDisco" FormName="discoForm">
+     <EditForm Model="disco" OnValidSubmit="GuardarDisco">
         <DataAnnotationsValidator />
         <ValidationSummary />
 
-        <div class="mb-3">
-            <label for="titulo" class="form-label">Titulo</label>
-            <InputText id="titulo" class="form-control" @bind-Value="disco.Titulo" />
+        <div class="row">
+            <div class="col-md-8">
+                <div class="mb-3">
+                    <label class="form-label">Artista</label>
+                    <InputSelect class="form-select" @bind-Value="disco.ArtistaId">
+                        <option value="0">-- Seleccione --</option>
+                        @foreach (var a in listaArtistas)
+                        {
+                            <option value="@a.Id">@a.NombreArtistico</option>
+                        }
+                    </InputSelect>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Título del Disco</label>
+                    <div class="input-group">
+                        <InputText class="form-control" @bind-Value="disco.Titulo" placeholder="Ej: Thriller" />
+                        <button type="button" class="btn btn-info" @onclick="BuscarDatosSpotify" disabled="@(disco.ArtistaId == 0)">
+                            <span class="bi bi-magic me-1"></span> Auto-completar
+                        </button>
+                    </div>
+                    @if(disco.ArtistaId == 0) { <small class="text-muted">Selecciona un artista primero.</small> }
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Año</label>
+                        <InputNumber class="form-control" @bind-Value="disco.AnioLanzamiento" />
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Tipo</label>
+                        <InputText class="form-control" @bind-Value="disco.TipoDisco" />
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-4 d-flex align-items-center justify-content-center">
+                <div class="card shadow-sm p-2" style="width: 100%; max-width: 300px;">
+                    <div class="card-body text-center">
+                        <h6 class="card-subtitle mb-2 text-muted">Portada</h6>
+                        @if (!string.IsNullOrEmpty(disco.ImagenUrl))
+                        {
+                            <img src="@disco.ImagenUrl" class="img-fluid rounded shadow" style="max-height: 250px;" />
+                        }
+                        else
+                        {
+                            <div class="bg-light d-flex align-items-center justify-content-center rounded" style="height: 200px; border: 2px dashed #ccc;">
+                                <span class="bi bi-disc fs-1 text-muted" style="font-size: 4rem;"></span>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
         </div>
 
-        <div class="mb-3">
-            <label for="anioLanzamiento" class="form-label">Año de Lanzamiento</label>
-            <InputNumber id="anioLanzamiento" class="form-control" @bind-Value="disco.AnioLanzamiento" />
+        <div class="mt-4">
+            <button type="submit" class="btn btn-primary px-4"><span class="bi bi-check-lg"></span> Guardar</button>
+            <button type="button" class="btn btn-outline-secondary ms-2 px-4" @onclick="Cancelar"><span class="bi bi-x-lg"></span> Cancelar</button>
         </div>
-
-        <div class="mb-3">
-            <label for="tipoDisco" class="form-label">Tipo de Disco</label>
-            <InputText id="tipoDisco" class="form-control" @bind-Value="disco.TipoDisco" />
-        </div>
-
-        <div class="mb-3">
-            <label for="artista" class="form-label">Artista</label>
-            <InputSelect id="artista" class="form-select" @bind-Value="disco.ArtistaId">
-                <option value="0">-- Seleccione un Artista --</option>
-                @foreach (var artista in listaArtistas)
-                {
-                    <option value="@artista.Id">@artista.NombreArtistico</option>
-                }
-            </InputSelect>
-        </div>
-
-        <div class="mb-3">
-            <button type="submit" class="btn btn-primary">Guardar</button>
-            <button type="button" class="btn btn-secondary" @onclick="Cancelar">Cancelar</button>
-        </div>
-        
     </EditForm> 
 }
 
 @code {
-    [Parameter]
-    public int Id { get; set; }
-
-    [SupplyParameterFromForm]
-    private Disco disco { get; set; } = new Disco();
-
-    // Lista para llenar el dropdown
+    [Parameter] public int Id { get; set; }
+    [SupplyParameterFromForm] private Disco disco { get; set; } = new Disco();
     private Artista[]? listaArtistas;
     private bool cargando = true;
+
+    private class SpotifyInfoResponse { 
+        public string Url { get; set; } = ""; 
+        public string ImagenUrl { get; set; } = ""; 
+        public int AnioLanzamiento { get; set; }
+        public string TipoDisco { get; set; } = "";
+    }
 
     protected override async Task OnInitializedAsync()
     {
         try 
         {
-            // 1. Cargar la lista de artistas para el selector
             listaArtistas = await HttpClient.GetFromJsonAsync<Artista[]>("api/Artistas");
+            if (Id > 0) disco = await HttpClient.GetFromJsonAsync<Disco>($"api/Discos/{Id}") ?? new Disco();
+        }
+        finally { cargando = false; }
+    }
 
-            // 2. Si estamos editando, cargar el disco
-            if (Id > 0)
+    private async Task BuscarDatosSpotify()
+    {
+        if (string.IsNullOrWhiteSpace(disco.Titulo) || disco.ArtistaId == 0) return;
+        cargando = true;
+        try
+        {
+            var response = await HttpClient.GetAsync($"api/Discos/buscar-info?titulo={disco.Titulo}&artistaId={disco.ArtistaId}");
+            if (response.IsSuccessStatusCode)
             {
-                disco = await HttpClient.GetFromJsonAsync<Disco>($"api/Discos/{Id}") ?? new Disco();
+                var info = await response.Content.ReadFromJsonAsync<SpotifyInfoResponse>();
+                if (info != null)
+                {
+                    disco.ImagenUrl = info.ImagenUrl;
+                    disco.AnioLanzamiento = info.AnioLanzamiento;
+                    disco.TipoDisco = info.TipoDisco;
+                    StateHasChanged();
+                }
             }
         }
-        catch(Exception)
-        {
-            // Manejar error de carga si es necesario
-        }
-        finally
-        {
-            cargando = false;
-        }
+        catch (Exception ex) { Console.WriteLine(ex.Message); }
+        finally { cargando = false; }
     }
 
     private async Task GuardarDisco()
     {
-        HttpResponseMessage response;
-        
-        // La validación de ArtistaId > 0 la hace automáticamente el DataAnnotationsValidator
-        // gracias al atributo [Range(1, ...)] en el modelo.
+        var response = Id == 0 
+            ? await HttpClient.PostAsJsonAsync("api/Discos", disco)
+            : await HttpClient.PutAsJsonAsync($"api/Discos/{Id}", disco);
 
-        if (Id == 0)
-        {
-            // Crear (POST a api/Discos)
-            response = await HttpClient.PostAsJsonAsync("api/Discos", disco);
-        }
-        else
-        {
-            // Actualizar (PUT a api/Discos/{Id})
-            response = await HttpClient.PutAsJsonAsync($"api/Discos/{Id}", disco);
-        }
-
-        if (response.IsSuccessStatusCode)
-        {
-            NavigationManager.NavigateTo("/discos");
-        }
-        else 
-        {
-            // Opcional: Leer el error del backend si falla
-            // var error = await response.Content.ReadAsStringAsync();
-        }
+        if (response.IsSuccessStatusCode) NavigationManager.NavigateTo("/discos");
     }
 
-    private void Cancelar()
-    {
-        NavigationManager.NavigateTo("/discos");
-    }
+    private void Cancelar() => NavigationManager.NavigateTo("/discos");
 }

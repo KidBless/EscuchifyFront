@@ -1,7 +1,109 @@
 ﻿@page "/"
+@using escuchify_app.Components.Models
+@inject HttpClient HttpClient
+@inject NavigationManager NavigationManager
+@rendermode InteractiveServer
 
-<PageTitle>Home</PageTitle>
+<PageTitle>Inicio</PageTitle>
 
-<h1>This is Escuchify App V0.2!</h1>
+<div class="text-center mt-5 mb-5">
+    <h1 class="display-3 fw-bold" style="color: var(--purple-primary);">Escuchify v2</h1>
+    
+    <p class="lead text-muted mt-3">
+        El mejor lugar para gestionar a tus artistas
+    </p>
 
-Hola!
+    <hr class="my-4" style="width: 50%; margin: auto; border-top: 3px solid #e0cffc; opacity: 1;">
+
+    <div class="mt-4">
+        <a href="artistas" class="btn btn-primary btn-lg mx-2 rounded-pill px-4">
+            <span class="bi bi-mic-fill me-2"></span> Ver Todos Los Artistas
+        </a>
+        <a href="discos" class="btn btn-outline-secondary btn-lg mx-2 rounded-pill px-4">
+            <span class="bi bi-disc-fill me-2"></span> Gestionar Discos
+        </a>
+    </div>
+</div>
+
+<div class="container pb-5">
+    <h3 class="text-center mb-4" style="color: var(--purple-dark); font-weight: 700;">
+        <span class="bi bi-star-fill text-warning me-2"></span> Artistas Recientes
+    </h3>
+
+    @if (artistasDestacados == null)
+    {
+        <div class="text-center">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Cargando...</span>
+            </div>
+        </div>
+    }
+    else if (artistasDestacados.Length == 0)
+    {
+        <p class="text-center text-muted">Aún no hay artistas cargados.</p>
+    }
+    else
+    {
+        <div class="row justify-content-center">
+            @foreach (var artista in artistasDestacados)
+            {
+                <div class="col-md-4 col-sm-6 mb-4">
+                    <div class="card h-100 shadow-sm border-0 hover-card" 
+                         @onclick="() => IrAEditar(artista.Id)"
+                         style="overflow: hidden; border-radius: 15px; cursor: pointer;">
+                        
+                        <div style="height: 250px; overflow: hidden; background-color: #f3f0ff; position: relative;">
+                            @if (!string.IsNullOrEmpty(artista.ImagenUrl))
+                            {
+                                <img src="@artista.ImagenUrl" alt="@artista.NombreArtistico" 
+                                     style="width: 100%; height: 100%; object-fit: cover;">
+                            }
+                            else
+                            {
+                                <div class="d-flex align-items-center justify-content-center h-100 text-secondary">
+                                    <span class="bi bi-mic-fill" style="font-size: 4rem; opacity: 0.3;"></span>
+                                </div>
+                            }
+                        </div>
+
+                        <div class="card-body text-center bg-white">
+                            <h5 class="card-title fw-bold" style="color: var(--purple-primary);">@artista.NombreArtistico</h5>
+                            <span class="badge rounded-pill bg-light text-dark border">
+                                @artista.Nacionalidad
+                            </span>
+                            <div class="mt-2 text-muted small">
+                                <span class="bi bi-pencil-fill me-1"></span> Clic para editar
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    private Artista[]? artistasDestacados;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var todos = await HttpClient.GetFromJsonAsync<Artista[]>("api/Artistas");
+            if (todos != null)
+            {
+                artistasDestacados = todos.Reverse().Take(3).ToArray();
+            }
+        }
+        catch (Exception)
+        {
+            artistasDestacados = Array.Empty<Artista>();
+        }
+    }
+
+    private void IrAEditar(int id)
+    {
+        // Esta función ahora sí se ejecutará gracias a @rendermode
+        NavigationManager.NavigateTo($"/artistas/editar/{id}");
+    }
+}

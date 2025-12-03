@@ -1,45 +1,48 @@
-﻿<div class="top-row ps-3 navbar navbar-dark">
+﻿<nav class="navbar navbar-expand-md navbar-dark bg-dark mb-4 shadow-lg">
     <div class="container-fluid">
         <a class="navbar-brand" href="">Escuchify App</a>
-        <button title="Navigation menu" class="navbar-toggler" @onclick="ToggleNavMenu">
+        
+        <button class="navbar-toggler" @onclick="ToggleNavMenu">
             <span class="navbar-toggler-icon"></span>
         </button>
+
+        <div class="@NavMenuCssClass" @onclick="ToggleNavMenu">
+            <ul class="navbar-nav me-auto mb-2 mb-md-0">
+                
+                <li class="nav-item">
+                    <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
+                        <span class="bi bi-house-door-fill" aria-hidden="true"></span> Home
+                    </NavLink>
+                </li>
+
+                <li class="nav-item">
+                    <NavLink class="nav-link" href="discos">
+                        <span class="bi bi-disc-fill" aria-hidden="true"></span> Discos
+                    </NavLink>
+                </li>
+
+                <li class="nav-item">
+                    <NavLink class="nav-link" href="artistas">
+                        <span class="bi bi-mic-fill" aria-hidden="true"></span> Artistas
+                    </NavLink>
+                </li>
+
+                <li class="nav-item">
+                    <NavLink class="nav-link" href="canciones">
+                        <span class="bi bi-music-note-list" aria-hidden="true"></span> Canciones
+                    </NavLink>
+                </li>
+
+            </ul>
+        </div>
     </div>
-</div>
-
-<div class="@NavMenuCssClass nav-scrollable" @onclick="ToggleNavMenu">
-    <nav class="flex-column">
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
-                <span class="bi bi-house-door-fill-nav-menu" aria-hidden="true"></span> Home
-            </NavLink>
-        </div>
-
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="discos">
-                <span class="bi bi-disc-fill" aria-hidden="true"></span> Discos
-            </NavLink>
-        </div>
-
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="artistas">
-                <span class="bi bi-mic-fill" aria-hidden="true"></span> Artistas
-            </NavLink>
-        </div>
-
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="canciones">
-                <span class="bi bi-music-note-list" aria-hidden="true"></span> Canciones
-            </NavLink>
-        </div>
-
-    </nav>
-</div>
+</nav>
 
 @code {
     private bool collapseNavMenu = true;
 
-    private string? NavMenuCssClass => collapseNavMenu ? "collapse" : null;
+    // Lógica para el colapso del menú en móviles
+    private string? NavMenuCssClass => collapseNavMenu ? "collapse navbar-collapse" : "navbar-collapse";
 
     private void ToggleNavMenu()
     {
